@@ -3,66 +3,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Web</title>
+    <title>DESSENJER</title>
+    <!-- FontAwesome (Ikonkalar) va Emoji Picker -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@emoji-mart/data"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
+    
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #0f172a; color: #fff; height: 100vh; display: flex; flex-direction: column; }
-        
-        /* Yuqori qism (Header) */
-        .header { background: #1e293b; padding: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; }
-        .header h2 { font-size: 18px; color: #38bdf8; }
-        
-        /* Xabarlar yoziladigan joy */
-        .chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .message { background: #334155; padding: 10px 15px; border-radius: 10px; max-width: 75%; word-break: break-word; }
-        .my-message { background: #2563eb; align-self: flex-end; }
+        :root {
+            --bg-dark: #0b0f19;
+            --panel-bg: #111827;
+            --accent-blue: #00d2ff;
+            --tech-blue: #0084ff;
+            --hover-blue: #0056b3;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #1f2937;
+        }
 
-        /* Pastki yozish paneli */
-        .input-box { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; }
-        .input-box input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #0f172a; color: #fff; outline: none; font-size: 16px; }
-        .input-box button { background: #38bdf8; color: #0f172a; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; }
+
+        /* Auth Screen */
+        #auth-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; background: radial-gradient(circle, #1e293b 0%, #0b0f19 100%);
+        }
+        .auth-card {
+            background: var(--panel-bg); padding: 40px; border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); border: 1px solid rgba(0, 210, 255, 0.3);
+            text-align: center; width: 90%; max-width: 400px;
+        }
+        .auth-card h1 { font-size: 32px; letter-spacing: 2px; color: var(--accent-blue); margin-bottom: 10px; font-weight: 800; }
+        .auth-card p { color: var(--text-muted); margin-bottom: 25px; font-size: 14px; }
+        .google-btn {
+            background: linear-gradient(135deg, var(--tech-blue), var(--accent-blue));
+            color: #fff; border: none; padding: 14px 20px; width: 100%; border-radius: 10px;
+            font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0, 132, 255, 0.4); transition: 0.3s;
+        }
+        .google-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 210, 255, 0.6); }
+
+        /* Main App Interface */
+        #app-container { display: none; height: 100vh; width: 100vw; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 320px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+        }
+        .user-header {
+            padding: 15px; border-bottom: 1px solid var(--border-color); display: flex;
+            align-items: center; justify-content: space-between;
+        }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--accent-blue); }
+        .user-details h3 { font-size: 15px; font-weight: 600; }
+        .user-details span { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 4px; }
+
+        .search-bar { padding: 10px 15px; border-bottom: 1px solid var(--border-color); }
+        .search-bar input {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: #0f172a; color: #fff; outline: none; font-size: 13px;
+        }
+
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item {
+            padding: 12px 15px; display: flex; align-items: center; gap: 12px;
+            cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.03); transition: 0.2s;
+        }
+        .chat-item:hover, .chat-item.active { background: rgba(0, 210, 255, 0.1); border-left: 4px solid var(--accent-blue); }
+
+        /* Main Chat Window */
+        .chat-window { flex: 1; display: flex; flex-direction: column; background: var(--bg-dark); }
+        .chat-header {
+            padding: 15px 20px; background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .chat-header h3 { font-size: 16px; color: var(--accent-blue); }
+
+        .messages-container {
+            flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+            background-image: radial-gradient(rgba(0, 210, 255, 0.05) 1px, transparent 0); background-size: 24px 24px;
+        }
+
+        .msg { max-width: 65%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; position: relative; }
+        .msg.incoming { background: var(--panel-bg); border: 1px solid var(--border-color); align-self: flex-start; }
+        .msg.outgoing { background: linear-gradient(135deg, var(--tech-blue), #0056b3); align-self: flex-end; color: #fff; }
+        .msg-time { font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-top: 4px; text-align: right; }
+
+        /* Input Area */
+        .input-bar {
+            padding: 15px 20px; background: var(--panel-bg); border-top: 1px solid var(--border-color);
+            display: flex; align-items: center; gap: 12px; position: relative;
+        }
+        .action-btn { color: var(--text-muted); font-size: 20px; cursor: pointer; transition: 0.2s; }
+        .action-btn:hover { color: var(--accent-blue); }
+        .input-bar input {
+            flex: 1; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--border-color);
+            background: #0f172a; color: #fff; outline: none; font-size: 14px;
+        }
+        .send-btn {
+            background: var(--accent-blue); color: var(--bg-dark); border: none; width: 40px; height: 40px;
+            border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; display: flex; }
+            .chat-window { display: none; }
+            .app-active .sidebar { display: none; }
+            .app-active .chat-window { display: flex; width: 100%; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>Telegram Web Chat</h2>
-        <span id="status" style="font-size: 12px; color: #10b981;">● Online</span>
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h1>DESSENJER</h1>
+            <p>Kelajak messenjeriga xush kelibsiz. Tizimga kirish uchun Gmail profilingizdan foydalaning.</p>
+            <button class="google-btn" onclick="loginWithGoogle()">
+                <i class="fa-brands fa-google"></i> Google bilan kirish
+            </button>
+        </div>
     </div>
 
-    <div class="chat-box" id="chatBox">
-        <div class="message">Salom! Xush kelibsiz. Bu yerga yozib koʻring.</div>
+    <!-- MAIN CHAT APP -->
+    <div id="app-container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="user-header">
+                <div class="user-info">
+                    <img id="my-avatar" class="avatar" src="" alt="Avatar">
+                    <div class="user-details">
+                        <h3 id="my-name">...</h3>
+                        <span>● Online</span>
+                    </div>
+                </div>
+                <i class="fa-solid fa-right-from-bracket action-btn" onclick="logout()" title="Chiqish"></i>
+            </div>
+            <div class="search-bar">
+                <input type="text" placeholder="Qidiruv yoki yangi chat...">
+            </div>
+            <div class="chat-list">
+                <div class="chat-item active">
+                    <img class="avatar" src="https://via.placeholder.com/40/00d2ff/ffffff?text=D" alt="Group">
+                    <div>
+                        <h4>DESSENJER Global Chat</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">Barcha foydalanuvchilar chaneli</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT WINDOW -->
+        <div class="chat-window">
+            <div class="chat-header">
+                <h3># Global Dessenjer Room</h3>
+                <div>
+                    <i class="fa-solid fa-phone action-btn" style="margin-right: 15px;"></i>
+                    <i class="fa-solid fa-ellipsis-vertical action-btn"></i>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <!-- Xabarlar Firestore orqali real-vaqtda keladi -->
+            </div>
+
+            <div class="input-bar">
+                <i class="fa-regular fa-face-smile action-btn" onclick="toggleEmojiPicker()"></i>
+                <i class="fa-solid fa-paperclip action-btn"></i>
+                <input type="text" id="msgInput" placeholder="Xabar yozing..." onkeypress="handleKeyPress(event)">
+                <i class="fa-solid fa-microphone action-btn"></i>
+                <button class="send-btn" onclick="sendMsg()"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
 
-    <div class="input-box">
-        <input type="text" id="messageInput" placeholder="Xabar yozing...">
-        <button onclick="sendMessage()">Yuborish</button>
-    </div>
+    <!-- FIREBASE & LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <script>
-        const chatBox = document.getElementById('chatBox');
-        const messageInput = document.getElementById('messageInput');
+        // FIREBASE SOZLAMALARINGIZNI SHU YERGA JOYLANG:
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        function sendMessage() {
-            let text = messageInput.value.trim();
-            if (text === "") return;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
-            // Biz yozgan xabar
-            let msgDiv = document.createElement('div');
-            msgDiv.className = 'message my-message';
-            msgDiv.innerText = text;
-            chatBox.appendChild(msgDiv);
+        let currentUser = null;
 
-            messageInput.value = "";
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+        // Login
+        window.loginWithGoogle = () => {
+            signInWithPopup(auth, provider).catch(err => alert(err.message));
+        };
 
-        // Enter tugmasini bosganda ham yuborish
-        messageInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                sendMessage();
+        // Logout
+        window.logout = () => {
+            signOut(auth);
+        };
+
+        // Auth holatini kuzatish
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                document.getElementById('my-avatar').src = user.photoURL;
+                document.getElementById('my-name').innerText = user.displayName;
+                loadMessages();
+            } else {
+                document.getElementById('auth-screen').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
             }
         });
+
+        // Xabar yuborish
+        window.sendMsg = async () => {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text || !currentUser) return;
+
+            input.value = '';
+            await addDoc(collection(db, "global_messages"), {
+                text: text,
+                uid: currentUser.uid,
+                name: currentUser.displayName,
+                photo: currentUser.photoURL,
+                createdAt: serverTimestamp()
+            });
+        };
+
+        window.handleKeyPress = (e) => {
+            if (e.key === 'Enter') sendMsg();
+        };
+
+        // Real-time Xabarlarni yuklash
+        function loadMessages() {
+            const q = query(collection(db, "global_messages"), orderBy("createdAt", "asc"));
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('messagesContainer');
+                container.innerHTML = '';
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const isMine = data.uid === currentUser.uid;
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `msg ${isMine ? 'outgoing' : 'incoming'}`;
+                    msgDiv.innerHTML = `
+                        <div style="font-size: 11px; color: var(--accent-blue); font-weight: bold; margin-bottom: 2px;">${isMine ? 'Siz' : data.name}</div>
+                        <div>${data.text}</div>
+                    `;
+                    container.appendChild(msgDiv);
+                });
+                container.scrollTop = container.scrollHeight;
+            });
+        }
     </script>
 </body>
 </html>
