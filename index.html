@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DESSENJER</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS kutubxonasi -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg-dark: #0b0f19;
@@ -44,7 +46,7 @@
             justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0, 132, 255, 0.4); transition: 0.3s;
         }
 
-        #app-container { display: none; height: 100vh; width: 100vw; }
+        #app-container { display: none; height: 100vh; width: 100vw; display: none; }
         
         .sidebar {
             width: 320px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
@@ -55,7 +57,7 @@
             align-items: center; justify-content: space-between;
         }
         .user-info { display: flex; align-items: center; gap: 12px; }
-        .avatar { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--accent-blue); }
+        .avatar { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--accent-blue); object-fit: cover; }
 
         .chat-list { flex: 1; overflow-y: auto; }
         .chat-item {
@@ -75,7 +77,7 @@
             background-image: radial-gradient(rgba(0, 210, 255, 0.05) 1px, transparent 0); background-size: 24px 24px;
         }
 
-        .msg { max-width: 70%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+        .msg { max-width: 70%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-break: break-word; }
         .msg.incoming { background: var(--panel-bg); border: 1px solid var(--border-color); align-self: flex-start; }
         .msg.outgoing { background: linear-gradient(135deg, var(--tech-blue), #0056b3); align-self: flex-end; color: #fff; }
 
@@ -116,13 +118,13 @@
         </div>
     </div>
 
-    <div id="app-container">
+    <div id="app-container" style="display: none;">
         <div class="sidebar">
             <div class="user-header">
                 <div class="user-info">
                     <img id="my-avatar" class="avatar" src="" alt="Avatar">
                     <div>
-                        <h4 id="my-name">...</h4>
+                        <h4 id="my-name" style="font-size: 14px;">...</h4>
                         <span style="font-size: 11px; color: #10b981;">● Online</span>
                     </div>
                 </div>
@@ -152,93 +154,119 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script>
+        // SUPABASE SOZLAMALARI (O'zingizning Supabase kalitlaringizni shu yerga yozing)
+        const SUPABASE_URL = 'https://akascjltrlhildcrxkqn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrYXNjamx0cmxoaWxkY3J4a3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2MjE0MDMsImV4cCI6MjEwMzE5NzQwM30.sMOGy7hNOpGpIAVvgAtAdTbowOxMJJHV5Xvk8tEZ7kg';
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyCenUZttuxlduQAhVJVqJHH7D2ShBEcHxM",
-          authDomain: "dessenger-e2981.firebaseapp.com",
-          projectId: "dessenger-e2981",
-          storageBucket: "dessenger-e2981.firebasestorage.app",
-          messagingSenderId: "409496178722",
-          appId: "1:409496178722:web:56052a223e0ffee3bc7a7b",
-          measurementId: "G-J27NBYS4X7"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
 
-        window.loginWithGoogle = () => {
-            signInWithPopup(auth, provider).catch(() => {
-                signInWithRedirect(auth, provider);
-            });
-        };
-
-        getRedirectResult(auth).catch(err => console.error(err));
-
-        window.logout = () => {
-            signOut(auth);
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('app-container').style.display = 'flex';
-                document.getElementById('my-avatar').src = user.photoURL;
-                document.getElementById('my-name').innerText = user.displayName;
-                loadMessages();
+        async function checkUser() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showApp(currentUser);
             } else {
-                document.getElementById('auth-screen').style.display = 'flex';
-                document.getElementById('app-container').style.display = 'none';
+                showAuth();
             }
-        });
+        }
 
-        window.sendMsg = async () => {
+        checkUser();
+
+        async function loginWithGoogle() {
+            const { error } = await _supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (error) alert(error.message);
+        }
+
+        async function logout() {
+            await _supabase.auth.signOut();
+            window.location.reload();
+        }
+
+        function showAuth() {
+            document.getElementById('auth-screen').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'none';
+        }
+
+        function showApp(user) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            
+            const meta = user.user_metadata;
+            document.getElementById('my-avatar').src = meta.avatar_url || meta.picture;
+            document.getElementById('my-name').innerText = meta.full_name || meta.name;
+            loadMessages();
+        }
+
+        async function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text || !currentUser) return;
 
+            const meta = currentUser.user_metadata;
+            const name = meta.full_name || meta.name;
+
+            await _supabase.from('messages').insert([
+                { text: text, user_name: name, user_id: currentUser.id }
+            ]);
             input.value = '';
-            await addDoc(collection(db, "global_messages"), {
-                text: text,
-                uid: currentUser.uid,
-                name: currentUser.displayName,
-                photo: currentUser.photoURL,
-                createdAt: serverTimestamp()
-            });
-        };
-
-        window.handleKeyPress = (e) => {
-            if (e.key === 'Enter') sendMsg();
-        };
-
-        function loadMessages() {
-            const q = query(collection(db, "global_messages"), orderBy("createdAt", "asc"));
-            onSnapshot(q, (snapshot) => {
-                const container = document.getElementById('messagesContainer');
-                container.innerHTML = '';
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const isMine = data.uid === currentUser.uid;
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = `msg ${isMine ? 'outgoing' : 'incoming'}`;
-                    msgDiv.innerHTML = `
-                        <div style="font-size: 11px; color: var(--accent-blue); font-weight: bold; margin-bottom: 2px;">${isMine ? 'Siz' : data.name}</div>
-                        <div>${data.text}</div>
-                    `;
-                    container.appendChild(msgDiv);
-                });
-                container.scrollTop = container.scrollHeight;
-            });
         }
 
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMsg();
+        }
+
+        async function loadMessages() {
+            const container = document.getElementById('messagesContainer');
+            
+            // Dastlabki xabarlarni olish
+            const { data: messages } = await _supabase
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            renderMessages(messages || []);
+
+            // Realtime yangilanishni yoqish
+            _supabase
+                .channel('public:messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                    messages.push(payload.new);
+                    renderMessages(messages);
+                })
+                .subscribe();
+        }
+
+        function renderMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            messages.forEach((msg) => {
+                const isMine = msg.user_id === currentUser.id;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `msg ${isMine ? 'outgoing' : 'incoming'}`;
+                msgDiv.innerHTML = `
+                    <div style="font-size: 11px; color: var(--accent-blue); font-weight: bold; margin-bottom: 2px;">${isMine ? 'Siz' : msg.user_name}</div>
+                    <div>${msg.escapeHtml ? msg.text : escapeHtml(msg.text)}</div>
+                `;
+                container.appendChild(msgDiv);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Multilanguage
         const translations = {
             uz: {
                 subtitle: "Gmail profilingiz orqali kirasiz.",
