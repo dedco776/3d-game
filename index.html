@@ -19,9 +19,17 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; }
 
+        /* Lang Selector Header */
+        .lang-switch { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; z-index: 10; }
+        .lang-btn {
+            background: var(--panel-bg); color: var(--text-muted); border: 1px solid var(--border-color);
+            padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;
+        }
+        .lang-btn.active { color: var(--accent-blue); border-color: var(--accent-blue); }
+
         #auth-screen {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; background: radial-gradient(circle, #1e293b 0%, #0b0f19 100%);
+            height: 100vh; background: radial-gradient(circle, #1e293b 0%, #0b0f19 100%); position: relative;
         }
         .auth-card {
             background: var(--panel-bg); padding: 40px; border-radius: 20px;
@@ -93,16 +101,25 @@
 </head>
 <body>
 
+    <!-- Til Almashtirish -->
+    <div class="lang-switch">
+        <button class="lang-btn active" onclick="setLanguage('uz')">UZ</button>
+        <button class="lang-btn" onclick="setLanguage('ru')">RU</button>
+        <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+    </div>
+
+    <!-- Kirish Oynasi -->
     <div id="auth-screen">
         <div class="auth-card">
             <h1>DESSENJER</h1>
-            <p>Gmail profilingiz orqali kirasiz.</p>
+            <p id="t-subtitle">Gmail profilingiz orqali kirasiz.</p>
             <button class="google-btn" onclick="loginWithGoogle()">
-                <i class="fa-brands fa-google"></i> Google bilan kirish
+                <i class="fa-brands fa-google"></i> <span id="t-loginbtn">Google bilan kirish</span>
             </button>
         </div>
     </div>
 
+    <!-- Asosiy Dessenjer Interfeysi -->
     <div id="app-container">
         <div class="sidebar">
             <div class="user-header">
@@ -118,8 +135,8 @@
             <div class="chat-list">
                 <div class="chat-item">
                     <div>
-                        <h4>Global Dessenjer Chat</h4>
-                        <p style="font-size: 12px; color: var(--text-muted);">Barcha foydalanuvchilar kanali</p>
+                        <h4 id="t-globalchat">Global Dessenjer Chat</h4>
+                        <p id="t-channeldesc" style="font-size: 12px; color: var(--text-muted);">Barcha foydalanuvchilar kanali</p>
                     </div>
                 </div>
             </div>
@@ -127,7 +144,7 @@
 
         <div class="chat-window">
             <div class="chat-header">
-                <h3># Global Chat Room</h3>
+                <h3 id="t-roomheader"># Global Chat Room</h3>
             </div>
 
             <div class="messages-container" id="messagesContainer"></div>
@@ -141,10 +158,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // SIZNING FIREBASE KALITLARINGIZ JOYLASHDI:
         const firebaseConfig = {
           apiKey: "AIzaSyCenUZttuxlduQAhVJVqJHH7D2ShBEcHxM",
           authDomain: "dessenger-e2981.firebaseapp.com",
@@ -162,9 +178,12 @@
 
         let currentUser = null;
 
+        // Telefondan kirishni to'g'ri ishlatuvchi funksiya
         window.loginWithGoogle = () => {
-            signInWithPopup(auth, provider).catch(err => alert(err.message));
+            signInWithRedirect(auth, provider);
         };
+
+        getRedirectResult(auth).catch(err => console.error(err));
 
         window.logout = () => {
             signOut(auth);
@@ -222,6 +241,47 @@
                 container.scrollTop = container.scrollHeight;
             });
         }
+
+        // Multilanguage Logic
+        const translations = {
+            uz: {
+                subtitle: "Gmail profilingiz orqali kirasiz.",
+                loginbtn: "Google bilan kirish",
+                globalchat: "Global Dessenjer Chat",
+                channeldesc: "Barcha foydalanuvchilar kanali",
+                roomheader: "# Global Chat Room",
+                placeholder: "Xabar yozing..."
+            },
+            ru: {
+                subtitle: "Вход через ваш профиль Gmail.",
+                loginbtn: "Войти через Google",
+                globalchat: "Глобальный Dessenjer Чат",
+                channeldesc: "Канал для всех пользователей",
+                roomheader: "# Глобальный Чат",
+                placeholder: "Напишите сообщение..."
+            },
+            en: {
+                subtitle: "Sign in using your Gmail profile.",
+                loginbtn: "Sign in with Google",
+                globalchat: "Global Dessenjer Chat",
+                channeldesc: "Channel for all users",
+                roomheader: "# Global Chat Room",
+                placeholder: "Type a message..."
+            }
+        };
+
+        window.setLanguage = (lang) => {
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const t = translations[lang];
+            document.getElementById('t-subtitle').innerText = t.subtitle;
+            document.getElementById('t-loginbtn').innerText = t.loginbtn;
+            document.getElementById('t-globalchat').innerText = t.globalchat;
+            document.getElementById('t-channeldesc').innerText = t.channeldesc;
+            document.getElementById('t-roomheader').innerText = t.roomheader;
+            document.getElementById('msgInput').placeholder = t.placeholder;
+        };
     </script>
 </body>
 </html>
